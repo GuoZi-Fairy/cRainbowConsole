@@ -1,0 +1,9 @@
+{
+    "C_Cpp.dimInactiveRegions": false,
+    "files.associations": {
+        "*.bin": "plaintext",
+        "conio.h": "c",
+        "*.rh": "c",
+        "stdlib.h": "c"
+    }
+}
