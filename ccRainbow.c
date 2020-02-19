@@ -32,6 +32,7 @@ typedef enum rainbow_color
     red,
     green,
     blue,
+    yellow,
 }rColor;
 #define RAINBOW_PARSER const char*
 
@@ -54,11 +55,7 @@ static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item);
 static STDCAL(void) rainbow_parse(const char* text,va_list arg);
 static STDCAL(void) rainbow_count_token(rItem* item);
 static STDCAL(void) rainbow_output(rItem* item,va_list arg);
-
-#ifdef _WIN32
-#include <windows.h>
 static STDCAL(void) color_control(rColor color);
-#endif
 /********************************************************/
 error color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
 error Invild_color_error = {"Invild color value","please check your color value"};
@@ -121,6 +118,7 @@ static STDCAL(rColor) rainbow_parser_color(char* color)
     else if(!strcmp(color,"white"))return white;
     else if(!strcmp(color,"blue"))return blue;
     else if(!strcmp(color,"green"))return green;
+    else if(!strcmp(color,"yellow"))return yellow;
     else RAISE(Invild_color_error);
     return clear;
 }
@@ -202,7 +200,7 @@ static STDCAL(void) rainbow_parse(const char* text,va_list arg)
 #define VAG(type) va_arg(arg,type)
 /*
 穷举记录:
-%d.x.o.e.g.p.u.s
+%d.x.o.e.g.p.u.s.c
 %ld.lf
 %+d.+f
 %-d.-f
@@ -254,6 +252,9 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
                     break;
                 case 's':
                     printf("%s",VAG(char*));
+                    break;
+                case 'c':
+                    printf("%c",VAG(char));
                     break;
                 case '+':
                 {
@@ -330,8 +331,8 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
                     default:
                         putchar('%');
                         putchar('l');
-                        puchar('l');
-                        puchar(*ch);
+                        putchar('l');
+                        putchar(*ch);
                         break;
                     }
                 }
@@ -353,6 +354,7 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
 /********************************************************/
 #ifdef _WIN32
     //TODO: code for windows os
+#include <windows.h>
 static STDCAL(void) color_control(rColor color)
 {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -366,6 +368,9 @@ static STDCAL(void) color_control(rColor color)
         break;
     case blue:
         SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE);
+        break;
+    case yellow:
+        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
         break;
     case white:
     case clear:
@@ -382,12 +387,43 @@ extern STDCAL(void) rainbow_print(const char* format,...)
     rainbow_parse(format,vag);
 }
 #elif __APPLE__||__linux
-    //TODO:code for osX/linux
+
+#define RED printf("\033[31m") //红色字体
+#define GREEN printf("\033[36m")//绿色字体
+#define YELLOW printf("\033[33m")//黄色字体
+#define BLUE printf("\033[34m")//蓝色字体
+#define WHITE printf("\e[1;37m")
+#define CLEAR printf("\033[0m")
+static STDCAL(void) color_control(rColor color)
+{
+    switch (color)
+    {
+    case red:
+        RED;
+        break;
+    case green:
+        GREEN;
+        break;
+    case yellow:
+        YELLOW;
+        break;
+    case blue:
+        BLUE;
+        break;
+    case white:
+        WHITE;
+        break;
+    case clear:
+        CLEAR;
+    default:
+        break;
+    }
+}
+
 #endif
 
 int main(int argc, char const *argv[])
 {   
-    const char* test = "{red}%f %d{blue}hehe";
-    rainbow_print(test,0.3,100);
+    rainbow_print("{red}hello {blue}world {green}%d",2020);
     return 0;
 }
