@@ -56,6 +56,7 @@ static STDCAL(void) rainbow_parse(const char* text,va_list arg);
 static STDCAL(void) rainbow_count_token(rItem* item);
 static STDCAL(void) rainbow_output(rItem* item,va_list arg);
 static STDCAL(void) color_control(rColor color);
+extern STDCAL(void) rainbow_print(const char* format,...);
 /********************************************************/
 error color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
 error Invild_color_error = {"Invild color value","please check your color value"};
@@ -254,7 +255,7 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
                     printf("%s",VAG(char*));
                     break;
                 case 'c':
-                    printf("%c",VAG(char));
+                    printf("%c",VAG(int));
                     break;
                 case '+':
                 {
