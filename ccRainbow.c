@@ -15,6 +15,7 @@ PS:在没有读入'}'时不能弹出'{'
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #define STDCAL(type) type __cdecl
 /*************************************************************/
 /*************************************************************/
@@ -26,17 +27,12 @@ typedef struct error
 }error;
 typedef enum rainbow_color
 {
+    clear,
     white,
     red,
-    clear
+    green,
+    blue,
 }rColor;
-//__bool
-typedef enum ccRainbow_boolea
-{
-    False,
-    True
-}boolean;
-
 #define RAINBOW_PARSER const char*
 
 typedef struct ranbowcontext
@@ -55,9 +51,14 @@ static STDCAL(void*) rainbow_stack_pop(rContext* parser,size_t size);
 static STDCAL(void) rainbow_set_output(rContext* parser,rItem* item,char* stack,size_t size);
 static STDCAL(rColor) rainbow_parser_color(char* color);
 static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item);
-static STDCAL(void) rainbow_parse(const char* text);
+static STDCAL(void) rainbow_parse(const char* text,va_list arg);
 static STDCAL(void) rainbow_count_token(rItem* item);
-static STDCAL(void) rainbow_output(rItem* item);
+static STDCAL(void) rainbow_output(rItem* item,va_list arg);
+
+#ifdef _WIN32
+#include <windows.h>
+static STDCAL(void) color_control(rColor color);
+#endif
 /********************************************************/
 error color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
 error Invild_color_error = {"Invild color value","please check your color value"};
@@ -118,6 +119,8 @@ static STDCAL(rColor) rainbow_parser_color(char* color)
     if(!strcmp(color,"red"))return red;
     else if(!strcmp(color,"clear"))return clear;
     else if(!strcmp(color,"white"))return white;
+    else if(!strcmp(color,"blue"))return blue;
+    else if(!strcmp(color,"green"))return green;
     else RAISE(Invild_color_error);
     return clear;
 }
@@ -147,7 +150,7 @@ static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item)
 }
 #define PUSH_THIS() PUSH(&rcontext,*rcontext.context);
 // #define PUSH_THIS() do{PUSH(&rcontext,*rcontext.context);printf(">\'%c\' pushed\n",*rcontext.context);}while(0)
-static STDCAL(void) rainbow_parse(const char* text)
+static STDCAL(void) rainbow_parse(const char* text,va_list arg)
 {
     rContext rcontext;
     rainbow_context_init(&rcontext,text);
@@ -161,7 +164,7 @@ static STDCAL(void) rainbow_parse(const char* text)
                 if(rcontext.size!=0)
                 {
                     rainbow_parse_stack(&rcontext,&item);
-                    rainbow_output(&item);
+                    rainbow_output(&item,arg);
                     rcontext.stack = (char*)rainbow_stack_pop(&rcontext,rcontext.top);
                     PUSH_THIS();
                 }
@@ -188,7 +191,7 @@ static STDCAL(void) rainbow_parse(const char* text)
     }
     rItem item;
     rainbow_parse_stack(&rcontext,&item);
-    rainbow_output(&item);
+    rainbow_output(&item,arg);
     rcontext.stack = (char*)rainbow_stack_pop(&rcontext,rcontext.top);
     free(rcontext.stack);
     free(item.output);
@@ -196,33 +199,195 @@ static STDCAL(void) rainbow_parse(const char* text)
 
 #undef PUSH_THIS
 /********************************************************/
-static STDCAL(void) rainbow_output(rItem* item)
+#define VAG(type) va_arg(arg,type)
+/*
+穷举记录:
+%d.x.o.e.g.p.u.s
+%ld.lf
+%+d.+f
+%-d.-f
+%lld
+%%
+*/
+static STDCAL(void) rainbow_output(rItem* item,va_list arg)
 {
+    color_control(item->color);
     char* ch = item->output;
-    while (ch!='/0')
+    while (*ch!='\0')
     {
         switch (*ch)
         {
             case '%':
+            {
+                ch++;
+                switch (*ch)
                 {
-                    
+                case '\0':
+                    putchar('%');
+                    goto out;//用于退出多重分支
                     break;
+                case '%':
+                    putchar('%');
+                case 'd':
+                    printf("%d",VAG(int));
+                    break;
+                case 'o':
+                    printf("%o",VAG(int));
+                    break;
+                case 'f':
+                    printf("%f",VAG(double));
+                    break;
+                case 'x':
+                    printf("%x",VAG(int));
+                    break;
+                case 'u':
+                    printf("%u",VAG(int));
+                    break;
+                case 'e':
+                    printf("%e",VAG(double));
+                    break;
+                case 'g':
+                    printf("%g",VAG(double));
+                    break;
+                case 'p':
+                    printf("%p",VAG(void*));
+                    break;
+                case 's':
+                    printf("%s",VAG(char*));
+                    break;
+                case '+':
+                {
+                    ch++;
+                    switch (*ch)
+                    {
+                        case '\0':
+                            putchar('%');
+                            putchar('+');
+                            goto out;
+                        case 'd':
+                            printf("%+d",VAG(int));
+                            break;
+                        case 'f':
+                            printf("%+f",VAG(double));
+                            break;
+                        default:
+                            putchar('%');
+                            putchar('+');
+                            break;
+                    }
                 }
+                case '-':
+                {
+                    ch++;
+                    switch (*ch)
+                    {
+                        case '\0':
+                            putchar('%');
+                            putchar('-');
+                            goto out;
+                        case 'd':
+                            printf("%-d",VAG(int));
+                            break;
+                        case 'f':
+                            printf("%-f",VAG(double));
+                            break;
+                    }
+                }
+                case 'l'://%lx...
+                {
+                    ch++;
+                    switch (*ch)
+                    {
+                    case '\0':
+                        putchar('%');
+                        putchar('l');
+                        goto out;//用于退出多重分支
+                        break;
+                    case 'd':
+                        printf("%ld",VAG(long));
+                        break;
+                    case 'f':
+                        printf("%lf",VAG(double));
+                        break;
+                    case 'l'://%llx
+                    {
+                        ch++;
+                        switch (*ch)
+                        {
+                        case '\0':
+                            putchar('%');
+                            putchar('l');
+                            putchar('l');
+                            goto out;//用于退出多重分支
+                            break;
+                        case 'd':
+                            printf("%lld",VAG(size_t));
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    default:
+                        putchar('%');
+                        putchar('l');
+                        puchar('l');
+                        puchar(*ch);
+                        break;
+                    }
+                }
+                default:
+                    putchar(*ch);
+                    break;
+                    }
+                break;
+            }
+        default:
+            putchar(*ch);
+            break;
         }
+        ch++;
     }
-    
+    out:
+    color_control(clear);
 }
 /********************************************************/
 #ifdef _WIN32
     //TODO: code for windows os
-    
+static STDCAL(void) color_control(rColor color)
+{
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    switch (color)
+    {
+    case red:
+        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED);
+        break;
+    case green:
+        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_GREEN);
+        break;
+    case blue:
+        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE);
+        break;
+    case white:
+    case clear:
+        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE |FOREGROUND_GREEN | FOREGROUND_RED);
+        break;
+    default:
+        break;
+    }
+}
+extern STDCAL(void) rainbow_print(const char* format,...)
+{
+    va_list vag;
+    va_start(vag,format);
+    rainbow_parse(format,vag);
+}
 #elif __APPLE__||__linux
     //TODO:code for osX/linux
 #endif
 
 int main(int argc, char const *argv[])
 {   
-    const char* test = "{red}\\{\\}{white}hehe";
-    rainbow_parse(test);
+    const char* test = "{red}%f %d{blue}hehe";
+    rainbow_print(test,0.3,100);
     return 0;
 }
