@@ -57,6 +57,7 @@ static STDCAL(void) rainbow_count_token(rItem* item);
 static STDCAL(void) rainbow_output(rItem* item,va_list arg);
 static STDCAL(void) color_control(rColor color);
 extern STDCAL(void) rainbow_print(const char* format,...);
+extern STDCAL(void) chinese_support(void);
 /********************************************************/
 error color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
 error Invild_color_error = {"Invild color value","please check your color value"};
@@ -353,9 +354,20 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
     color_control(clear);
 }
 /********************************************************/
+extern STDCAL(void) rainbow_print(const char* format,...)
+{
+    va_list vag;
+    va_start(vag,format);
+    rainbow_parse(format,vag);
+}
+/*******************************************************/
 #ifdef _WIN32
     //TODO: code for windows os
 #include <windows.h>
+extern STDCAL(void) chinese_support(void)
+{
+    SetConsoleOutputCP(65001);//设置cmd编码为utf-8
+}
 static STDCAL(void) color_control(rColor color)
 {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -381,20 +393,18 @@ static STDCAL(void) color_control(rColor color)
         break;
     }
 }
-extern STDCAL(void) rainbow_print(const char* format,...)
-{
-    va_list vag;
-    va_start(vag,format);
-    rainbow_parse(format,vag);
-}
+
 #elif __APPLE__||__linux
 
 #define RED printf("\033[31m") //红色字体
 #define GREEN printf("\033[36m")//绿色字体
 #define YELLOW printf("\033[33m")//黄色字体
 #define BLUE printf("\033[34m")//蓝色字体
-#define WHITE printf("\e[1;37m")
+#define WHITE printf("\e[37m")
 #define CLEAR printf("\033[0m")
+extern STDCAL(void) chinese_support(void)
+{
+}
 static STDCAL(void) color_control(rColor color)
 {
     switch (color)
@@ -422,9 +432,3 @@ static STDCAL(void) color_control(rColor color)
 }
 
 #endif
-
-int main(int argc, char const *argv[])
-{   
-    rainbow_print("{red}hello {blue}world {green}%d",2020);
-    return 0;
-}

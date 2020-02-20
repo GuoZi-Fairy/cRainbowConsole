@@ -37,7 +37,8 @@ cRainbowconsole is written in ANSI C (C89) in order to support as many platforms
 ### Data Struct
 There is no struch you need to learn
 ### API
-There is only one API `rainbow_print`
+There is only one core API `rainbow_print`
+* data:2020/02/20 chinese support: If you want to output chinese char,you should use`chinese_support();`statament at the most top of your code.
 
 #### Start your ccRainbowconcole progress
 You can just simply use ccRainbowconsole like `printf`
@@ -46,7 +47,6 @@ You can just simply use ccRainbowconsole like `printf`
 
 If you want to output '{' or '}'  you need to char "\\{"("\\}") or "\{"("\}")
 
-**Regrettably,it can only output character of ASCII!**
 ##### color
 - {red}
 - {green}
