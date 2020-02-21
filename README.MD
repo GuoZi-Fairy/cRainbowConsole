@@ -56,23 +56,7 @@ If you want to output '{' or '}'  you need to char "\\{"("\\}") or "\{"("\}")
 - {clear}
 
 #### format control token
-- %d
-- %s
-- %f
-- %c
-- %x
-- %o
-- %u
-- %p
-- %e
-- %g
-- %ld
-- %lf
-- %-d
-- %-f
-- %+d
-- %+f
-- %lld
+From version:0.1.2 you could use all format_control_token in printf()
 ## License
 
 MIT License

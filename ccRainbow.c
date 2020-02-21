@@ -16,15 +16,23 @@ PS:在没有读入'}'时不能弹出'{'
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include "ccRainbow.h"
 #define STDCAL(type) type __cdecl
+#define RAINBOW_PARSER const char*
 /*************************************************************/
-/*************************************************************/
-
-typedef struct error
+/* ERROR */
+typedef struct rainbow_error rError;
+typedef struct rainbow_error
 {
     char* error_type;
     char* error_msg;
 }error;
+rError color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
+rError Invild_color_error = {"Invild color value","please check your color value"};
+rError Invild_control_token_error = {"Invild format control token","please check your %%..."};
+#define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
+/********************************************************/
+/* Add new color these */
 typedef enum rainbow_color
 {
     clear,
@@ -34,8 +42,74 @@ typedef enum rainbow_color
     blue,
     yellow,
 }rColor;
-#define RAINBOW_PARSER const char*
+static STDCAL(void) color_control(rColor color);
+static STDCAL(rColor) rainbow_parser_color(char* color);
+extern STDCAL(void) chinese_support(void);
+static STDCAL(rColor) rainbow_parser_color(char* color)
+{
+    if(!strcmp(color,"red"))return red;
+    else if(!strcmp(color,"clear"))return clear;
+    else if(!strcmp(color,"white"))return white;
+    else if(!strcmp(color,"blue"))return blue;
+    else if(!strcmp(color,"green"))return green;
+    else if(!strcmp(color,"yellow"))return yellow;
+    else RAISE(Invild_color_error);
+    return clear;
+}
+#ifdef _WIN32 //color code for windows
+#include <windows.h>
+#define RED SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED)
+#define GREEN SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_GREEN)
+#define BLUE SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE)
+#define YELLOW SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN)
+#define WHITE SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE |FOREGROUND_GREEN | FOREGROUND_RED)
+#define CLEAR SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE |FOREGROUND_GREEN | FOREGROUND_RED)
+extern STDCAL(void) chinese_support(void)
+{
+    SetConsoleOutputCP(65001);//设置cmd编码为utf-8
+}
 
+#elif __APPLE__||__linux // color code for unix
+#define RED printf("\033[31m") //红色字体
+#define GREEN printf("\033[36m")//绿色字体
+#define YELLOW printf("\033[33m")//黄色字体
+#define BLUE printf("\033[34m")//蓝色字体
+#define WHITE printf("\e[37m")
+#define CLEAR printf("\033[0m")
+extern STDCAL(void) chinese_support(void)
+{
+}
+#endif
+
+static STDCAL(void) color_control(rColor color)
+{
+#ifdef _WIN32
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+#endif
+    switch (color)
+    {
+    case red:
+        RED;
+        break;
+    case green:
+        GREEN;
+        break;
+    case yellow:
+        YELLOW;
+        break;
+    case blue:
+        BLUE;
+        break;
+    case white:
+        WHITE;
+        break;
+    case clear:
+        CLEAR;
+    default:
+        break;
+    }
+}
+/********************************************************/
 typedef struct ranbowcontext
 {
     RAINBOW_PARSER context;//表示当前指向的字符
@@ -47,22 +121,16 @@ typedef struct rainbowItem
     char* output;
     rColor color;
 }rItem;
+/********************************************************/
+static STDCAL(void) rainbow_context_init(rContext* parser,const char* text);
 static STDCAL(void*) rainbow_stack_push(rContext* parser,size_t size);
 static STDCAL(void*) rainbow_stack_pop(rContext* parser,size_t size);
 static STDCAL(void) rainbow_set_output(rContext* parser,rItem* item,char* stack,size_t size);
-static STDCAL(rColor) rainbow_parser_color(char* color);
 static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item);
 static STDCAL(void) rainbow_parse(const char* text,va_list arg);
 static STDCAL(void) rainbow_count_token(rItem* item);
 static STDCAL(void) rainbow_output(rItem* item,va_list arg);
-static STDCAL(void) color_control(rColor color);
-extern STDCAL(void) rainbow_print(const char* format,...);
-extern STDCAL(void) chinese_support(void);
-/********************************************************/
-error color_end_token_error = {"color_parse_error","please check '}' at the end of string"};
-error Invild_color_error = {"Invild color value","please check your color value"};
-#define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
-/********************************************************/
+/*******************************************************/
 static STDCAL(void) rainbow_context_init(rContext* parser,const char* text)
 {
     parser->context = text;
@@ -74,14 +142,7 @@ static STDCAL(void) rainbow_context_init(rContext* parser,const char* text)
 #ifndef INIT_STACK_SIZE
 #define INIT_STACK_SIZE 256
 #endif
-static STDCAL(void) forech_stack(rContext* parser)
-{
-    for (size_t i = 0; i < parser->top; i++)
-    {
-        printf("%lld:%c\n",i,parser->stack[i]);
-    }
-    
-}
+
 static STDCAL(void*) rainbow_stack_push(rContext* parser,size_t size)
 {
     void* ret;//为值的位置
@@ -113,17 +174,7 @@ static STDCAL(void) rainbow_set_output(rContext* parser,rItem* item,char* stack,
     memcpy(item->output,stack,size);
     *(item->output+size)='\0';
 }
-static STDCAL(rColor) rainbow_parser_color(char* color)
-{
-    if(!strcmp(color,"red"))return red;
-    else if(!strcmp(color,"clear"))return clear;
-    else if(!strcmp(color,"white"))return white;
-    else if(!strcmp(color,"blue"))return blue;
-    else if(!strcmp(color,"green"))return green;
-    else if(!strcmp(color,"yellow"))return yellow;
-    else RAISE(Invild_color_error);
-    return clear;
-}
+
 static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item)
 {
     assert(parser->size!=0);
@@ -149,7 +200,6 @@ static STDCAL(void) rainbow_parse_stack(rContext* parser,rItem* item)
     rainbow_set_output(parser,item,c,parser->top-size);
 }
 #define PUSH_THIS() PUSH(&rcontext,*rcontext.context);
-// #define PUSH_THIS() do{PUSH(&rcontext,*rcontext.context);printf(">\'%c\' pushed\n",*rcontext.context);}while(0)
 static STDCAL(void) rainbow_parse(const char* text,va_list arg)
 {
     rContext rcontext;
@@ -196,19 +246,69 @@ static STDCAL(void) rainbow_parse(const char* text,va_list arg)
     free(rcontext.stack);
     free(item.output);
 }
-
 #undef PUSH_THIS
 /********************************************************/
 #define VAG(type) va_arg(arg,type)
-/*
-穷举记录:
-%d.x.o.e.g.p.u.s.c
-%ld.lf
-%+d.+f
-%-d.-f
-%lld
-%%
-*/
+#ifndef TOKEN_LIMIT
+#define TOKEN_LIMIT 30
+#endif
+static STDCAL(char*) rainbow_format_token_parse(char* ch,va_list arg)
+{
+    char* c = ch;
+    if(*(c+1)=='%')//%%
+    {
+        c++;
+        putchar('%');
+        goto out;
+    }
+    else
+    {
+        char format_token[TOKEN_LIMIT];
+        char* parser = format_token;
+        for(int i =0;i<TOKEN_LIMIT;i++)format_token[i]='\0';//init
+        while (1)
+        {
+            switch (*c)
+            {
+            case'e':
+            case 'x':
+            case 'o':
+            case 'g':
+            case 'u':
+            case 'd':
+                *parser = *c;
+                printf(format_token,VAG(size_t));
+                goto out;
+                break;
+            case 'f':
+                *parser = *c;
+                printf(format_token,VAG(double));
+                goto out;
+                break;
+            case 's':
+                *parser = *c;
+                printf(format_token,VAG(char*));
+                goto out;
+                break;
+            case 'c':
+                *parser = *c;
+                printf(format_token,VAG(int));
+            case '\0':
+                RAISE(Invild_control_token_error);
+                assert(*parser!='\0');
+                break;
+            default:
+                *parser = *c;
+                parser++;
+                c++;
+                break;
+            }
+        }
+    }
+    out:
+    return c;
+    ;
+}
 static STDCAL(void) rainbow_output(rItem* item,va_list arg)
 {
     color_control(item->color);
@@ -219,130 +319,8 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
         {
             case '%':
             {
-                ch++;
-                switch (*ch)
-                {
-                case '\0':
-                    putchar('%');
-                    goto out;//用于退出多重分支
-                    break;
-                case '%':
-                    putchar('%');
-                case 'd':
-                    printf("%d",VAG(int));
-                    break;
-                case 'o':
-                    printf("%o",VAG(int));
-                    break;
-                case 'f':
-                    printf("%f",VAG(double));
-                    break;
-                case 'x':
-                    printf("%x",VAG(int));
-                    break;
-                case 'u':
-                    printf("%u",VAG(int));
-                    break;
-                case 'e':
-                    printf("%e",VAG(double));
-                    break;
-                case 'g':
-                    printf("%g",VAG(double));
-                    break;
-                case 'p':
-                    printf("%p",VAG(void*));
-                    break;
-                case 's':
-                    printf("%s",VAG(char*));
-                    break;
-                case 'c':
-                    printf("%c",VAG(int));
-                    break;
-                case '+':
-                {
-                    ch++;
-                    switch (*ch)
-                    {
-                        case '\0':
-                            putchar('%');
-                            putchar('+');
-                            goto out;
-                        case 'd':
-                            printf("%+d",VAG(int));
-                            break;
-                        case 'f':
-                            printf("%+f",VAG(double));
-                            break;
-                        default:
-                            putchar('%');
-                            putchar('+');
-                            break;
-                    }
-                }
-                case '-':
-                {
-                    ch++;
-                    switch (*ch)
-                    {
-                        case '\0':
-                            putchar('%');
-                            putchar('-');
-                            goto out;
-                        case 'd':
-                            printf("%-d",VAG(int));
-                            break;
-                        case 'f':
-                            printf("%-f",VAG(double));
-                            break;
-                    }
-                }
-                case 'l'://%lx...
-                {
-                    ch++;
-                    switch (*ch)
-                    {
-                    case '\0':
-                        putchar('%');
-                        putchar('l');
-                        goto out;//用于退出多重分支
-                        break;
-                    case 'd':
-                        printf("%ld",VAG(long));
-                        break;
-                    case 'f':
-                        printf("%lf",VAG(double));
-                        break;
-                    case 'l'://%llx
-                    {
-                        ch++;
-                        switch (*ch)
-                        {
-                        case '\0':
-                            putchar('%');
-                            putchar('l');
-                            putchar('l');
-                            goto out;//用于退出多重分支
-                            break;
-                        case 'd':
-                            printf("%lld",VAG(size_t));
-                            break;
-                        default:
-                            break;
-                        }
-                    }
-                    default:
-                        putchar('%');
-                        putchar('l');
-                        putchar('l');
-                        putchar(*ch);
-                        break;
-                    }
-                }
-                default:
-                    putchar(*ch);
-                    break;
-                    }
-                break;
+            ch = rainbow_format_token_parse(ch,arg);
+            break;
             }
         default:
             putchar(*ch);
@@ -350,10 +328,11 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
         }
         ch++;
     }
-    out:
     color_control(clear);
+
 }
 /********************************************************/
+/* API */
 extern STDCAL(void) rainbow_print(const char* format,...)
 {
     va_list vag;
@@ -361,74 +340,4 @@ extern STDCAL(void) rainbow_print(const char* format,...)
     rainbow_parse(format,vag);
 }
 /*******************************************************/
-#ifdef _WIN32
-    //TODO: code for windows os
-#include <windows.h>
-extern STDCAL(void) chinese_support(void)
-{
-    SetConsoleOutputCP(65001);//设置cmd编码为utf-8
-}
-static STDCAL(void) color_control(rColor color)
-{
-    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    switch (color)
-    {
-    case red:
-        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED);
-        break;
-    case green:
-        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_GREEN);
-        break;
-    case blue:
-        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE);
-        break;
-    case yellow:
-        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
-        break;
-    case white:
-    case clear:
-        SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | FOREGROUND_BLUE |FOREGROUND_GREEN | FOREGROUND_RED);
-        break;
-    default:
-        break;
-    }
-}
 
-#elif __APPLE__||__linux
-
-#define RED printf("\033[31m") //红色字体
-#define GREEN printf("\033[36m")//绿色字体
-#define YELLOW printf("\033[33m")//黄色字体
-#define BLUE printf("\033[34m")//蓝色字体
-#define WHITE printf("\e[37m")
-#define CLEAR printf("\033[0m")
-extern STDCAL(void) chinese_support(void)
-{
-}
-static STDCAL(void) color_control(rColor color)
-{
-    switch (color)
-    {
-    case red:
-        RED;
-        break;
-    case green:
-        GREEN;
-        break;
-    case yellow:
-        YELLOW;
-        break;
-    case blue:
-        BLUE;
-        break;
-    case white:
-        WHITE;
-        break;
-    case clear:
-        CLEAR;
-    default:
-        break;
-    }
-}
-
-#endif
