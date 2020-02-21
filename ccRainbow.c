@@ -11,6 +11,8 @@ PS:在没有读入'}'时不能弹出'{'
 若解析到'%d/%c/%s/%f/...',则将参数以相同参数输出
 若解析到'\}'或'\{' 则先替换为{/}再抛入输出中
 */
+
+#define __CRAINBOWCONSOLE_VERSION__ 0,1,2
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -248,11 +250,11 @@ static STDCAL(void) rainbow_parse(const char* text,va_list arg)
 }
 #undef PUSH_THIS
 /********************************************************/
-#define VAG(type) va_arg(arg,type)
+#define VAG(type) va_arg(*arg,type)
 #ifndef TOKEN_LIMIT
 #define TOKEN_LIMIT 30
 #endif
-static STDCAL(char*) rainbow_format_token_parse(char* ch,va_list arg)
+static STDCAL(char*) rainbow_format_token_parse(char* ch,va_list* arg)
 {
     char* c = ch;
     if(*(c+1)=='%')//%%
@@ -319,7 +321,7 @@ static STDCAL(void) rainbow_output(rItem* item,va_list arg)
         {
             case '%':
             {
-            ch = rainbow_format_token_parse(ch,arg);
+            ch = rainbow_format_token_parse(ch,&arg);
             break;
             }
         default:
@@ -340,4 +342,7 @@ extern STDCAL(void) rainbow_print(const char* format,...)
     rainbow_parse(format,vag);
 }
 /*******************************************************/
-
+extern STDCAL(void) VERSION(void)
+{
+    rainbow_print("{yellow}version:%d.%d.%d\n",__CRAINBOWCONSOLE_VERSION__);
+}
